@@ -1,0 +1,64 @@
+extern "js" {
+    mod global Math {
+        fn max(x: i32, y: i32) -> i32;
+        fn min(x: i32, y: i32) -> i32;
+    }
+}
+
+fn main() {
+    let banks = include_str("input.txt").trim().split("\n");
+
+    let total = 0 as i64;
+    for bank in banks {
+        let largest = find_largest_from_bank(bank);
+        total += largest;
+    }
+
+    println("{total}");
+}
+
+// Greedy algorithm: O(n * k) instead of O(C(n,k))
+// At each step, pick the largest digit that leaves enough remaining
+fn find_largest_from_bank(s: String) -> i64 {
+    let result = "";
+    let start = 0;
+    let digits_to_pick = 12;
+
+    for i in 0..digits_to_pick {
+        // How many more digits we need after this one
+        let remaining_needed = digits_to_pick - i - 1;
+        // Last valid position to pick from (must leave enough for remaining)
+        let end = s.length - remaining_needed;
+
+        // Find the largest digit in range [start, end)
+        let best_pos = start;
+        let best_digit = s.charAt(start);
+        for pos in start + 1..end {
+            let digit = s.charAt(pos);
+            if digit > best_digit {
+                best_digit = digit;
+                best_pos = pos;
+            }
+        }
+
+        // Add this digit to result and move start past it
+        result += best_digit;
+        start = best_pos + 1;
+    }
+
+    parseLong(result)
+}
+
+#[cfg(test)]
+#[test]
+fn test_find_largest_from_bank() {
+    let res = find_largest_from_bank("987654321111111");
+    assert_eq(res, 987654321111 as i64);
+    let res = find_largest_from_bank("811111111111119");
+    assert_eq(res, 811111111119 as i64);
+    let res = find_largest_from_bank("234234234234278");
+    assert_eq(res, 434234234278 as i64);
+    let res = find_largest_from_bank("818181911112111");
+    assert_eq(res, 888911112111 as i64);
+}
+

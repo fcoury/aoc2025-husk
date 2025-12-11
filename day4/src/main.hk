@@ -1,0 +1,168 @@
+/// Count accessible "@" cells in a grid based on surrounding cells
+/// The grid is represented as a 2D array of strings
+/// An "@" cell is considered accessible if fewer than 4 of its 8 surrounding cells are also "@"
+
+extern "js" {
+    mod global Math {
+        fn floor(x: f64) -> i32;
+    }
+}
+
+fn main() {
+    let grid = include_str("input.txt").trim().split("\n").map(|row: String| row.split(""));
+    if false {
+        println("{}", count_accessible(grid));
+    } else {
+        println("{}", count_removable(grid));
+    }
+}
+
+/// Print a representation of the grid
+fn print_grid(grid: [[String]]) {
+    for row in 0..grid.length {
+        for col in 0..grid[row].length {
+            print("{}", grid[row][col]);
+        }
+        println("");
+    }
+}
+
+/// Count the number of accessible "@" cells in the grid
+fn count_accessible(grid: [[String]]) -> i32 {
+    let total = 0;
+    for row in 0..grid.length {
+        for col in 0..grid[row].length {
+            if grid[row][col] == "@" {
+                if is_accessible(grid, row, col) {
+                    // print("@");
+                    total += 1;
+                } else {
+                    // print("x");
+                }
+            } else {
+                // print(".");
+            }
+        }
+        // println("");
+    }
+
+    total
+}
+
+/// Check if a cell is accessible based on its surroundings
+fn is_accessible(grid: [[String]], cell_row: i32, cell_col: i32) -> bool {
+    let row_size = grid[0].length;
+
+    // we need to check -1, -1 (up left); -1, 0 (up); -1, 1 (up right) etc
+    let surroundings = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    let occupied = 0;
+    for s in surroundings {
+        let row = cell_row + s[0];
+        let col = cell_col + s[1];
+        if row >= 0 && row < grid.length && col >= 0 && col < row_size {
+            let cell_value = grid[row][col];
+            if cell_value == "@" {
+                occupied += 1;
+            }
+        }
+    }
+
+    occupied < 4
+}
+
+/// Removes all rolls that are accessible from the grid, returns the new grid
+fn resolve_grid(grid: [[String]]) -> (i32, [[String]]) {
+    let result = [];
+    let removed = 0;
+    // TODO: we need iterators!
+    for i in 0..grid.length {
+        let row = grid[i];
+        result.push([]);
+        for j in 0..row.length {
+            let cell = grid[i][j];
+            if cell == "x" {
+                result[i].push(".");
+            } else {
+                if cell == "@" && is_accessible(grid, i, j) {
+                    result[i].push("x");
+                    removed += 1;
+                } else {
+                    result[i].push(cell);
+                }
+            }
+        }
+    }
+
+    (removed, result)
+}
+
+/// Count how many paper rolls can be removed from the grid
+fn count_removable(grid: [[String]]) -> i32 {
+    let count = 0;
+    loop {
+        let result = resolve_grid(grid);
+        let removed = result.0;
+        count += removed;
+        grid = result.1;
+
+        if removed == 0 {
+            break;
+        }
+    }
+
+    count
+}
+
+#[cfg(test)]
+#[test]
+fn test_count_removable() {
+    let grid = include_str("input-test.txt").split("\n").map(|row: String| row.split(""));
+    assert_eq(43, count_removable(grid));
+}
+
+#[cfg(test)]
+#[test]
+fn test_resolve_grid_debug() {
+    let grid = include_str("input-test.txt").split("\n").map(|row: String| row.split(""));
+    let (removed, new_grid) = resolve_grid(grid);
+    assert_eq(removed, 13);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 12);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 7);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 5);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 2);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 1);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 1);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 1);
+
+    let (removed, new_grid) = resolve_grid(new_grid);
+    assert_eq(removed, 1);
+}
+
+#[cfg(test)]
+#[test]
+fn test_count_accessible() {
+    let grid = include_str("input-test.txt").split("\n").map(|row: String| row.split(""));
+    assert_eq(13, count_accessible(grid));
+}
+
+#[cfg(test)]
+#[test]
+fn test_is_accessible() {
+    let grid = [[".", ".", "@", "@", "."], [".", ".", "@", "@", "."], [".", ".", "@", "@", "."], [".", ".", "@", "@", "."]];
+    assert(is_accessible(grid, 0, 2));
+}
+

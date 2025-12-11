@@ -1,0 +1,259 @@
+// Helper functions for i64 min/max (Math.min/max don't work with BigInt)
+fn min_i64(x: i64, y: i64) -> i64 {
+    if x < y {
+        x
+    } else {
+        y
+    }
+}
+
+fn max_i64(x: i64, y: i64) -> i64 {
+    if x > y {
+        x
+    } else {
+        y
+    }
+}
+
+fn main() {
+    part_two()
+}
+
+fn part_two() {
+    let data = include_str("input.txt").trim();
+    let parts = data.split_once("\n\n").expect("valid input").to_array().expect("valid input").map(|d: String| d.split("\n"));
+
+    let fresh = parts[0];
+    let ingredients = parts[1];
+
+    let ranges: [Range<i64>] = [];
+    for range in fresh {
+        let parts = range.split("-").map(|p: String| parse_long(p));
+        ranges.push(parts[0]..=parts[1]);
+    }
+
+    let new_ranges = combine_ranges(ranges);
+    new_ranges.sort(|a, b| if a.start < b.start {
+        -1
+    } else {
+        if a.start > b.start {
+            1
+        } else {
+            0
+        }
+    });
+    for r in new_ranges {
+        println("{}-{} = {}", r.start, r.end, range_len(r));
+    }
+
+    let total_numbers = 0;
+    for range in new_ranges {
+        total_numbers += range_len(range);
+    }
+
+    println("total: {total_numbers}");
+}
+
+fn combine_ranges(ranges: [Range<i64>]) -> [Range<i64>] {
+    let current_ranges = ranges;
+
+    loop {
+        // contains the list of combined ranges
+        // combined ranges after merging overlaps
+        let new_ranges: [Range<i64>] = [];
+        let handled_list = Set::new();
+        let merges = 0;
+
+        // println("Starting new combine iteration with ranges: {current_ranges:?}");
+
+        for range in current_ranges {
+            if handled_list.has(range) {
+                continue;
+            }
+
+            let handled = false;
+            for cmp_range in current_ranges {
+                // println("- Comparing {range:?} to {cmp_range:?}");
+
+                if handled_list.has(range) {
+                    // println("  Skipping already handled range {range:?}");
+                    continue;
+                }
+                if range == cmp_range {
+                    // println("  Skipping same range comparison {range:?}");
+                    continue;
+                }
+
+                if overlap(range, cmp_range) {
+                    // println("  Overlap detected between {range:?} and {cmp_range:?}");
+                    let new_range = combine(range, cmp_range);
+                    // println("  Combining {range:?} and {cmp_range:?} => {new_range:?}");
+
+                    new_ranges.push(new_range);
+                    handled_list.add(cmp_range);
+
+                    merges += 1;
+                    handled = true;
+
+                    // println("  Marking {range:?} as handled");
+                } else {
+                    // println("  No overlap between {range:?} and {cmp_range:?}");
+                }
+
+                // println("  The end");
+            }
+
+            if !handled {
+                // println("  Adding unmodified range {range:?}");
+                new_ranges.push(range);
+            }
+
+            // println("  Marking {range:?} as handled");
+            handled_list.add(range);
+        }
+
+        // println("  New ranges {new_ranges:?}");
+        // println("  Merges: {merges}");
+        // println("");
+
+        if merges == 0 {
+            break;
+        }
+
+        current_ranges = new_ranges;
+    }
+
+    current_ranges
+}
+
+fn draw(r: Range<i64>) -> String {
+    let prefix = " ".repeat(r.start);
+    let size = " ".repeat(range_len(r));
+    format("{prefix}[{size}]")
+}
+
+fn end_exclusive(r: Range<i64>) -> i64 {
+    if r.inclusive {
+        r.end + 1 as i64
+    } else {
+        r.end
+    }
+}
+
+fn range_len(r: Range<i64>) -> i64 {
+    end_exclusive(r) - r.start
+}
+
+fn combine(a: Range<i64>, b: Range<i64>) -> Range<i64> {
+    let start = min_i64(a.start, b.start);
+
+    let a_end_excl = end_exclusive(a);
+    let b_end_excl = end_exclusive(b);
+
+    // Pick the boundary that extends farthest to the right and preserve its
+    // inclusivity
+    let mut end = a.end;
+    let mut inclusive = a.inclusive;
+    if b_end_excl > a_end_excl {
+        end = b.end;
+        inclusive = b.inclusive;
+    }
+
+    if inclusive {
+        start..=end
+    } else {
+        start..end
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_combine_same_range() {
+    let ranges = [68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781, 68170613195522..=69237165933781];
+    let combined = combine_ranges(ranges);
+    println("Combined ranges: {combined:#?}");
+}
+
+#[cfg(test)]
+#[test]
+fn test_combine() {
+    let range1 = 506608717526455..=506608717526455;
+    let range2 = 506608717526455..=509191390818865;
+    assert_msg(overlap(range1, range2), "Ranges should overlap");
+
+    assert_eq(68170613195522..=69237165933781, 68170613195522..=69237165933781);
+
+    let ranges = [494222414498672..=500428274283871, 506608717526455..=506608717526455, 506608717526455..=509191390818865];
+    let ranges = combine_ranges(ranges);
+    println("Combined ranges: {ranges:?}");
+    assert_msg(ranges.len() == 2, "Should have combined overlapping ranges");
+}
+
+fn overlap(a: Range<i64>, b: Range<i64>) -> bool {
+    let a_end = end_exclusive(a);
+    let b_end = end_exclusive(b);
+
+    // Half-open interval overlap test: [a.start, a_end) intersects [b.start, b_end)
+    a.start < b_end && b.start < a_end
+}
+
+#[cfg(test)]
+#[test]
+fn test_overlap() {
+    //     ....|....1....|....2....|....3....|....4....|....5
+    // 1:    [ ] 
+    // 2:           [   ]
+    // 3:                 [   ]
+    // 4:             [     ]
+    // 5:                      [    ]
+    // 6:                      [    ]
+    // 7:          [      ]
+    // 8:          [     ]      
+    //
+    let range1 = 3 as i64..=5 as i64;
+    let range2 = 10 as i64..=14 as i64;
+    let range3 = 16 as i64..=20 as i64;
+    let range4 = 12 as i64..=18 as i64;
+    let range5 = 21 as i64..=27 as i64;
+    let range6 = 22 as i64..=27 as i64;
+    let range7 = 10 as i64..=16 as i64;
+    let range8 = 10 as i64..=15 as i64;
+
+    assert_msg(!overlap(range1, range2), "1 before 2");
+    assert_msg(!overlap(range2, range3), "2 before 3");
+    assert_msg(overlap(range3, range4), "start of 3 < end of 4");
+    assert_msg(overlap(range2, range4), "start of 5 < end of 2");
+    assert_msg(!overlap(range3, range5), "end of 3 = start of 5, 3 left of 5");
+    assert_msg(overlap(range6, range5), "5 contains 6");
+    assert_msg(overlap(range7, range3), "end of 7 = start of 3, 7 left of 3");
+    assert_msg(overlap(range8, range7), "7 contains 8");
+    assert_msg(!overlap(range6, range3), "before");
+    assert_msg(!overlap(range8, range3), "after");
+}
+
+// -------------------------------------------------
+// Commented out part_one because it uses i32 ranges
+// fn part_one() {
+//     let data = include_str("input.txt").trim();
+//     let parts = data.split_once("\n\n").expect("valid input").to_array().expect("valid input").map(|d: String| d.split("\n"));
+//
+//     let fresh = parts[0];
+//     let ingredients = parts[1];
+//
+//     let ranges: [Range] = [];
+//     for range in fresh {
+//         let parts = range.split("-").map(|p: String| parse_int(p, 10));
+//         ranges.push(parts[0]..=parts[1]);
+//     }
+//
+//     let count = 0;
+//     for id in ingredients {
+//         let fresh = ranges.some(|r| r.contains(id));
+//         println("Ingredient {id} is fresh: {fresh}");
+//         if fresh {
+//             count += 1;
+//         }
+//     }
+//
+//     println("{count}");
+// }
